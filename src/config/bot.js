@@ -53,490 +53,264 @@ export const botConfig = {
     prefix: process.env.PREFIX || "!",
   },
 
-  // =========================
-  // APPLICATIONS SYSTEM
-  // =========================
-  applications: {
-    // Default questions shown when someone fills out an application.
-    defaultQuestions: [
-      { question: "What is your name?", required: true },
-      { question: "How old are you?", required: true },
-      { question: "Why do you want to join?", required: true },
-    ],
+  import discord
+from discord import app_commands
+from discord.ext import commands
+import random
+import asyncio
 
-    // Embed colors by application status.
-    statusColors: {
-      pending: "#FFA500",
-      approved: "#00FF00",
-      denied: "#FF0000",
-    },
+intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.members = True
 
-    // How long users must wait before submitting another application (hours).
-    applicationCooldown: 24,
+bot = commands.Bot(command_prefix='!', intents=intents, application_id=1512716074074902548)
 
-    // Auto-delete denied applications after this many days.
-    deleteDeniedAfter: 7,
+@bot.event
+async def on_ready():
+    print(f'{bot.user} is ready!')
+    print(f'Bout ID: {bot.user.id}')
+    print(f'Servers: {len(bot.guilds)}')
+    local_commands = bot.tree.get_commands()
+    local_names = [cmd.name for cmd in local_commands]
+    print('Local slash command count:', len(local_commands))
+    print('Local slash command names:', local_names)
+    try:
+        for guild in bot.guilds:
+            print(f'Copying global commands to guild {guild.id} and syncing...')
+            bot.tree.copy_global_to(guild=guild)
+            guild_synced = await bot.tree.sync(guild=guild)
+            print(f'Synced {len(guild_synced)} guild command(s) to guild {guild.id}')
 
-    // Auto-delete approved applications after this many days.
-    deleteApprovedAfter: 30,
+            remote_commands = await bot.tree.fetch_commands(guild=guild)
+            remote_names = [c.name for c in remote_commands]
+            print(f'Guild {guild.id} remote commands after sync:', remote_names)
+    except Exception as e:
+        print(f'Error syncing commands: {e}')
 
-    // Role IDs allowed to manage applications.
-    managerRoles: [], // Will be populated from environment or database
-  },
+# ===== RAID COMMANDS =====
 
-  // =========================
-  // EMBED COLORS & BRANDING
-  // =========================
-  // IMPORTANT: This is the SINGLE SOURCE OF TRUTH for all bot colors
-  embeds: {
-    colors: {
-      // Main brand colors.
-      primary: "#336699",
-      secondary: "#2F3136",
-
-      // Standard status colors for success/error/warning/info messages.
-      success: "#57F287",
-      error: "#ED4245",
-      warning: "#FEE75C",
-      info: "#3498DB",
-
-      // Neutral utility colors.
-      light: "#FFFFFF",
-      dark: "#202225",
-      gray: "#99AAB5",
-
-      // Discord-style palette shortcuts.
-      blurple: "#5865F2",
-      green: "#57F287",
-      yellow: "#FEE75C",
-      fuchsia: "#EB459E",
-      red: "#ED4245",
-      black: "#000000",
-
-      // Feature-specific colors.
-      giveaway: {
-        active: "#57F287",
-        ended: "#ED4245",
-      },
-      ticket: {
-        open: "#57F287",
-        claimed: "#FAA61A",
-        closed: "#ED4245",
-        pending: "#99AAB5",
-      },
-      economy: "#F1C40F",
-      birthday: "#E91E63",
-      moderation: "#9B59B6",
-
-      // Ticket priority color mapping.
-      priority: {
-        none: "#95A5A6",
-        low: "#3498db",
-        medium: "#2ecc71",
-        high: "#f1c40f",
-        urgent: "#e74c3c",
-      },
-    },
-    footer: {
-      // Default footer text used in bot embeds.
-      text: "Titan Bot",
-      // Footer icon URL (null = no icon).
-      icon: null,
-    },
-    // Default thumbnail URL for embeds (null = no thumbnail).
-    thumbnail: null,
-    author: {
-      // Optional default embed author block.
-      name: null,
-      icon: null,
-      url: null,
-    },
-  },
-
-  // =========================
-  // ECONOMY SETTINGS
-  // =========================
-  economy: {
-    currency: {
-      // Currency display name.
-      name: "coins",
-      // Plural display name.
-      namePlural: "coins",
-      // Currency symbol shown in balances.
-      symbol: "$",
-    },
-
-    // Starting balance for new users.
-    startingBalance: 0,
-
-    // Maximum bank amount before upgrades (if upgrades are used).
-    baseBankCapacity: 100000,
-
-    // Daily reward amount.
-    dailyAmount: 100,
-
-    // Work command random payout range.
-    workMin: 10,
-    workMax: 100,
-
-    // Beg command random payout range.
-    begMin: 5,
-    begMax: 50,
-
-    // Chance to succeed when robbing (0.4 = 40%).
-    robSuccessRate: 0.4,
-
-    // Jail time after failed rob (milliseconds).
-    // 3600000 = 1 hour.
-    robFailJailTime: 3600000,
-  },
-
-  // =========================
-  // SHOP SETTINGS
-  // =========================
-  // Add shop defaults here when needed.
-  shop: {
-
-  },
-
-  // =========================
-  // TICKET SYSTEM
-  // =========================
-  tickets: {
-    // Category ID where new tickets are created (null = no forced category).
-    defaultCategory: null,
-
-    // Role IDs allowed to manage/support tickets.
-    supportRoles: [],
-
-    // Priority options users/staff can assign.
-    priorities: {
-      none: {
-        emoji: "⚪",
-        color: "#95A5A6",
-        label: "None",
-      },
-      low: {
-        emoji: "🟢",
-        color: "#2ECC71",
-        label: "Low",
-      },
-      medium: {
-        emoji: "🟡",
-        color: "#F1C40F",
-        label: "Medium",
-      },
-      high: {
-        emoji: "🔴",
-        color: "#E74C3C",
-        label: "High",
-      },
-      urgent: {
-        emoji: "🚨",
-        color: "#E91E63",
-        label: "Urgent",
-      },
-    },
-
-    // Default priority for new tickets.
-    defaultPriority: "none",
-
-    // Category ID where closed tickets are archived.
-    archiveCategory: null,
-
-    // Channel ID where ticket logs are sent.
-    logChannel: null,
-  },
-
-  // =========================
-  // GIVEAWAY SETTINGS
-  // =========================
-  giveaways: {
-    // Default giveaway duration in milliseconds.
-    // 86400000 = 24 hours.
-    defaultDuration: 86400000,
-
-    // Allowed winner count range.
-    minimumWinners: 1,
-    maximumWinners: 10,
-
-    // Allowed giveaway duration range in milliseconds.
-    // 300000 = 5 minutes.
-    minimumDuration: 300000,
-    // 2592000000 = 30 days.
-    maximumDuration: 2592000000,
-
-    // Role IDs allowed to host giveaways.
-    allowedRoles: [],
-
-    // Role IDs that bypass giveaway restrictions.
-    bypassRoles: [],
-  },
-
-  // =========================
-  // BIRTHDAY SETTINGS
-  // =========================
-  birthday: {
-    // Role ID given to users on their birthday.
-    defaultRole: null,
-
-    // Channel ID where birthday announcements are posted.
-    announcementChannel: null,
-
-    // Timezone used to calculate birthday dates.
-    timezone: "UTC",
-  },
-
-  // =========================
-  // VERIFICATION SETTINGS
-  // =========================
-  verification: {
-    // Message shown when posting the verification panel.
-    defaultMessage: "Click the button below to verify yourself and gain access to the server!",
-
-    // Text on the verification button.
-    defaultButtonText: "Verify",
-
-    // Automatic verification behavior.
-    autoVerify: {
-      // How automatic verification decides who is auto-approved:
-      // - "none"        = everyone is auto-verified immediately
-      // - "account_age" = account must be older than set days
-      // - "server_size" = auto-verify everyone only in smaller servers
-      defaultCriteria: "none",
-
-      // Days used when `defaultCriteria` is `account_age`.
-      defaultAccountAgeDays: 7,
-
-      // Member count threshold used when `defaultCriteria` is `server_size`.
-      // Example: 1000 means auto-verify if server has fewer than 1000 members.
-      serverSizeThreshold: 1000,
-
-      // Allowed safety limits for account-age requirements.
-      // 1 = minimum day, 365 = maximum days.
-      minAccountAge: 1,
-      maxAccountAge: 365,
-
-      // If true, user receives a DM after verification.
-      sendDMNotification: true,
-
-      // Human-readable descriptions for each criteria mode.
-      criteria: {
-        account_age: "Account must be older than specified days",
-        server_size: "All users if server has less than 1000 members",
-        none: "All users immediately"
-      }
-    },
-
-    // Minimum time between verification attempts (milliseconds).
-    // 5000 = 5 seconds.
-    verificationCooldown: 5000,
-
-    // Maximum failed attempts allowed inside the time window below.
-    maxVerificationAttempts: 3,
-
-    // Time window for counting attempts (milliseconds).
-    // 60000 = 1 minute.
-    attemptWindow: 60000,
-
-    // In-memory safety limits (helps avoid unbounded memory growth).
-    maxCooldownEntries: 10000,
-    maxAttemptEntries: 10000,
-    // Cleanup frequency for cooldown/attempt maps (milliseconds).
-    // 300000 = 5 minutes.
-    cooldownCleanupInterval: 300000,
-    // Maximum metadata payload size for audit entries (bytes).
-    maxAuditMetadataBytes: 4096,
-    // Maximum number of audit entries kept in memory.
-    maxInMemoryAuditEntries: 1000,
-    // If true, log every verification action.
-    logAllVerifications: true,
-    // If true, preserve verification audit history.
-    keepAuditTrail: true,
-  },
-
-  // =========================
-  // WELCOME / GOODBYE MESSAGES
-  // =========================
-  welcome: {
-    // Welcome template posted when a user joins.
-    // Placeholders: {user}, {server}, {memberCount}
-    defaultWelcomeMessage:
-      "Welcome {user} to {server}! We now have {memberCount} members!",
-    // Goodbye template posted when a user leaves.
-    // Placeholders: {user}, {memberCount}
-    defaultGoodbyeMessage:
-      "{user} has left the server. We now have {memberCount} members.",
-    // Channel ID for welcome messages.
-    defaultWelcomeChannel: null,
-    // Channel ID for goodbye messages.
-    defaultGoodbyeChannel: null,
-  },
-
-  // =========================
-  // COUNTER CHANNELS
-  // =========================
-  counters: {
-    defaults: {
-      // Default naming/description templates for counter entries.
-      name: "{name} Counter",
-      description: "Server {name} counter",
-      // Channel type used for counters (typically "voice").
-      type: "voice",
-      // Channel name format. `{count}` is replaced automatically.
-      channelName: "{name}-{count}",
-    },
-    permissions: {
-      // Default denied permissions for the counter channel.
-      deny: ["VIEW_CHANNEL"],
-      // Default allowed permissions for the counter channel.
-      allow: ["VIEW_CHANNEL", "CONNECT", "SPEAK"],
-    },
-    messages: {
-      // Default response messages for counter actions.
-      created: "✅ Created counter **{name}**",
-      deleted: "🗑️ Deleted counter **{name}**",
-      updated: "🔄 Updated counter **{name}**",
-    },
-    types: {
-      // Built-in counter types and how each count is calculated.
-      members: {
-        name: "👥 Members",
-        description: "Total members in the server",
-        getCount: (guild) => guild.memberCount.toString(),
-      },
-      bots: {
-        name: "🤖 Bots",
-        description: "Total bot accounts in the server",
-        getCount: (guild) =>
-          guild.members.cache.filter((m) => m.user.bot).size.toString(),
-      },
-      members_only: {
-        name: "👤 Humans",
-        description: "Total human members (non-bots)",
-        getCount: (guild) =>
-          guild.members.cache.filter((m) => !m.user.bot).size.toString(),
-      },
-    },
-  },
-
-  // =========================
-  // GENERIC BOT MESSAGES
-  // =========================
-  messages: {
-    noPermission: "You do not have permission to use this command.",
-    cooldownActive: "Please wait {time} before using this command again.",
-    errorOccurred: "An error occurred while executing this command.",
-    missingPermissions:
-      "I am missing required permissions to perform this action.",
-    commandDisabled: "This command has been disabled.",
-    maintenanceMode: "The bot is currently in maintenance mode.",
-  },
-
-  // =========================
-  // FEATURE TOGGLES
-  // =========================
-  // Set any feature to `false` to disable it globally.
-  features: {
-    // Core systems.
-    economy: true,
-    leveling: true,
-    moderation: true,
-    logging: true,
-    welcome: true,
-
-    // Community engagement systems.
-    tickets: true,
-    giveaways: true,
-    birthday: true,
-    counter: true,
-
-    // Security and self-service systems.
-    verification: true,
-    reactionRoles: true,
-    joinToCreate: true,
-
-    // Utility/quality-of-life modules.
-    voice: true,
-    search: true,
-    tools: true,
-    utility: true,
-    community: true,
-    fun: true,
-  },
-};
-
-export function validateConfig(config) {
-  const errors = [];
-
-  if (process.env.NODE_ENV !== 'production') {
-    logger.debug('Environment variables check:');
-    logger.debug('DISCORD_TOKEN exists:', !!process.env.DISCORD_TOKEN);
-    logger.debug('TOKEN exists:', !!process.env.TOKEN);
-    logger.debug('CLIENT_ID exists:', !!process.env.CLIENT_ID);
-    logger.debug('GUILD_ID exists:', !!process.env.GUILD_ID);
-    logger.debug('POSTGRES_HOST exists:', !!process.env.POSTGRES_HOST);
-    logger.debug('NODE_ENV:', process.env.NODE_ENV);
-  }
-
-  if (!process.env.DISCORD_TOKEN && !process.env.TOKEN) {
-    errors.push("Bot token is required (DISCORD_TOKEN or TOKEN environment variable)");
-  }
-
-  if (!process.env.CLIENT_ID) {
-    errors.push("Client ID is required (CLIENT_ID environment variable)");
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    if (!process.env.POSTGRES_HOST) {
-      errors.push("PostgreSQL host is required in production (POSTGRES_HOST environment variable)");
-    }
-    if (!process.env.POSTGRES_USER) {
-      errors.push("PostgreSQL user is required in production (POSTGRES_USER environment variable)");
-    }
-    if (!process.env.POSTGRES_PASSWORD) {
-      errors.push("PostgreSQL password is required in production (POSTGRES_PASSWORD environment variable)");
-    }
-  }
-
-  return errors;
-}
-
-const configErrors = validateConfig(botConfig);
-if (configErrors.length > 0) {
-  logger.error("Bot configuration errors:", configErrors.join("\n"));
-  if (process.env.NODE_ENV === "production") {
-    process.exit(1);
-  }
-}
-
-export const BotConfig = botConfig;
-
-export function getColor(path, fallback = "#99AAB5") {
-  
-  if (typeof path === "number") return path;
-  if (typeof path === "string" && path.startsWith("#")) {
+@bot.tree.command(name='ra1d', description='RA1D THE FUCKING SERVER')
+@app_commands.describe(times='How many times to send', use_emojis='Add emojis to the message')
+async def ra1d(interaction: discord.Interaction, times: int = 4, use_emojis: bool = True):
+    base_message = "Putinka V1 just destroyed your server join us and start raid!\n\nNOW JOIN THIS SERVER: https://discord.gg/aYqEkkjkQ"
     
-    return parseInt(path.replace("#", ""), 16);
-  }
-  const result = path
-    .split(".")
-    .reduce(
-      (obj, key) => (obj && obj[key] !== undefined ? obj[key] : fallback),
-      botConfig.embeds.colors,
-    );
-  
-  if (typeof result === "string" && result.startsWith("#")) {
-    return parseInt(result.replace("#", ""), 16);
-  }
-  return result;
+    if use_emojis:
+        emojis = ["💀", "🔥", "⚡", "💥", "🚀", "😈", "👹"]
+        message = f"{random.choice(emojis)} {base_message} {random.choice(emojis)}"
+    else:
+        message = base_message
+    
+    await interaction.response.defer()
+    
+    for i in range(times):
+        await interaction.followup.send(message)
+        await asyncio.sleep(0.5)  # Small delay to avoid rate limits
+
+@bot.tree.command(name='spam', description='Spam a message multiple times')
+@app_commands.describe(message='Message to spam', times='How many times to spam')
+async def spam(interaction: discord.Interaction, message: str, times: int = 10):
+    await interaction.response.defer()
+    
+    for i in range(times):
+        await interaction.followup.send(message)
+        await asyncio.sleep(0.3)
+
+@bot.tree.command(name='massping', description='Ping everyone in the server')
+async def massping(interaction: discord.Interaction):
+    await interaction.response.defer()
+    
+    guild = interaction.guild
+    if guild is None:
+        await interaction.followup.send('This command must be used in a server.', ephemeral=True)
+        return
+
+    members = [member.mention for member in guild.members if not member.bot]
+    if members:
+        await interaction.followup.send(f"@everyone {' '.join(members[:50])}")
+    else:
+        await interaction.followup.send("No members to ping!")
+
+@bot.tree.command(name='nuke', description='Delete all messages in the channel')
+async def nuke(interaction: discord.Interaction):
+    await interaction.response.defer()
+    
+    channel = interaction.channel
+    if channel is None:
+        await interaction.followup.send('This command must be used in a server channel.', ephemeral=True)
+        return
+
+    deleted = 0
+    async for message in channel.history(limit=None):
+        try:
+            await message.delete()
+            deleted += 1
+            await asyncio.sleep(0.1)
+        except:
+            pass
+    
+    await interaction.followup.send(f"Deleted {deleted} messages!")
+
+@bot.tree.command(name='everyone', description='Send @everyone message')
+@app_commands.describe(message='Message to send with @everyone')
+async def everyone(interaction: discord.Interaction, message: str):
+    await interaction.response.send_message(f"@everyone {message}")
+
+# ===== UTILITY COMMANDS =====
+
+@bot.tree.command(name='say', description='Make the bot say something')
+@app_commands.describe(message='The message you want the bot to say')
+async def say(interaction: discord.Interaction, message: str):
+    await interaction.response.send_message(message)
+
+@bot.tree.command(name='serverinfo', description='Get server information')
+async def serverinfo(interaction: discord.Interaction):
+    guild = interaction.guild
+    if guild is None:
+        await interaction.response.send_message('This command must be used inside a server.', ephemeral=True)
+        return
+
+    embed = discord.Embed(title=f"Server Info: {guild.name}", color=discord.Color.red())
+    embed.add_field(name="Server ID", value=guild.id, inline=True)
+    embed.add_field(name="Members", value=guild.member_count, inline=True)
+    embed.add_field(name="Channels", value=len(guild.channels), inline=True)
+    embed.add_field(name="Roles", value=len(guild.roles), inline=True)
+    embed.add_field(name="Owner", value=guild.owner.mention, inline=True)
+    embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
+    
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name='userinfo', description='Get user information')
+@app_commands.describe(user='User to get info about (optional)')
+async def userinfo(interaction: discord.Interaction, user: discord.Member = None):
+    target = user or interaction.user
+    embed = discord.Embed(title=f"User Info: {target.name}", color=discord.Color.blue())
+    embed.add_field(name="User ID", value=target.id, inline=True)
+    embed.add_field(name="Joined", value=target.joined_at.strftime("%Y-%m-%d"), inline=True)
+    embed.add_field(name="Created", value=target.created_at.strftime("%Y-%m-%d"), inline=True)
+    embed.add_field(name="Roles", value=len(target.roles), inline=True)
+    embed.set_thumbnail(url=target.avatar.url if target.avatar else None)
+    
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name='dm_user', description='Send a DM to a user')
+@app_commands.describe(user='User to DM', message='Message to send')
+async def dm_user(interaction: discord.Interaction, user: discord.Member, message: str):
+    try:
+        await user.send(message)
+        await interaction.response.send_message(f"Sent DM to {user.display_name}.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("I cannot DM that user.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"Failed to send DM: {e}", ephemeral=True)
+
+@bot.tree.command(name='help', description='Show all available commands')
+async def help_command(interaction: discord.Interaction):
+    embed = discord.Embed(title="🚀 RAID BOT COMMANDS", color=discord.Color.purple())
+    
+    embed.add_field(name="🔥 RAID COMMANDS", value="""
+    `/ra1d` - Send raid message
+    `/spam` - Spam a message
+    `/massping` - Ping all members
+    `/nuke` - Delete channel messages
+    `/everyone` - Send @everyone message
+    """, inline=False)
+    
+    embed.add_field(name="🛠️ UTILITY COMMANDS", value="""
+    `/say` - Make bot say something
+    `/serverinfo` - Get server info
+    `/userinfo` - Get user info
+    `/dm_user` - Send a DM to a user
+    `/ad_of_server` - Send the server invite link
+    `/help` - Show this help
+    """, inline=False)
+    
+    await interaction.response.send_message(embed=embed)
+
+# Discord slash command names cannot contain spaces, so this command is registered as `/ad_of_server`.
+@bot.tree.command(name='ad_of_server', description='Send the server invite link')
+async def ad_of_server(interaction: discord.Interaction):
+    await interaction.response.send_message('https://discord.gg/aYqEkkjkQ')
+
+# Put all your GIFs here - everyone can use them
+MY_GIFS = {
+    "dog": "https://cdn.discordapp.com/attachments/1437820996647256328/1438590455724900472/CuteDog.mp4?ex=69176f44&is=69161dc4&hm=9704f063056ec2d1831458ef6299daf1fcc8fd70df4a031dda94c91e0200abca&",
+    "fat": "https://cdn.discordapp.com/attachments/1408686054419988513/1408688616728690768/trim.8C46EDC0-7AB2-420C-8CBA-D501F251244D.mp4?ex=68ab4fc2&is=68a9fe42&hm=5caa232f36402f0270fda837c61cc1a980b5705a17fdcf32ee691d393640636c&",
+    "slut": "https://cdn.discordapp.com/attachments/1437820996647256328/1438591077039738880/m2-res_640p.mp4?ex=69176fd8&is=69161e58&hm=9bf3a4330944faff31bd1c1bc6365b1c68b42a2ecb05d8e8bf0cfddec247ae69&",
+    # Add as many as you want here
+    # "name": "direct_gif_url",
 }
 
-export function getRandomColor() {
-  const colors = Object.values(botConfig.embeds.colors).flatMap((color) =>
-    typeof color === "string" ? color : Object.values(color),
-  );
-  return colors[Math.floor(Math.random() * colors.length)];
-}
+@bot.tree.command(
+    name="thug",
+    description="Send 18+ content",
+)
+@app_commands.describe(name="Thug")
+async def gif(interaction: discord.Interaction, name: str):
+    name = name.lower()
+    if name in MY_GIFS:
+        await interaction.response.send_message(MY_GIFS[name])
+    else:
+        await interaction.response.send_message(
+            "Enjoy lol hahaha!",
+            ephemeral=True
+        )
+
+# This makes Discord show a dropdown of all your GIF names
+@gif.autocomplete("name")
+async def gif_autocomplete(interaction: discord.Interaction, current: str):
+    choices = []
+    for gif_name in MY_GIFS.keys():
+        if current.lower() in gif_name.lower():
+            choices.append(app_commands.Choice(name=gif_name.title(), value=gif_name))
+    return choices[:25] # Discord max is 25
+YOUR_SERVER_ID = 1167915307302670459 # Replace with your server ID
+ALLOWED_USERS = [1278266354268372993, 1475479427965128857] # Your ID + your friend's ID
+
+def is_allowed():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        # Allow everyone by default
+        return True
+    return app_commands.check(predicate)
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CheckFailure):
+        await interaction.response.send_message(
+            "You can't use this bot in this server.",
+            ephemeral=True
+        )
+        # const { SlashCommandBuilder } = require('discord.js');
+
+# module.exports = {
+#   data: new SlashCommandBuilder()
+#     .setName('interact ra1d')
+#     .setDescription('Interact with bot to send raid messages')
+#     .addStringOption(option =>
+#       option.setName('message')
+#         .setDescription('What to say')
+#         .setRequired(true)),
+#
+#   async execute(interaction) {
+#     const msg = interaction.options.getString('message');
+#     await interaction.reply({ content: 'sent', ephemeral: true });
+#     await interaction.channel.send(msg);
+#   },
+#};
+@bot.tree.command(name='dm_role', description='DM all users with a role')
+@app_commands.describe(role='Role to DM', message='Message to send')
+async def dm_role(interaction: discord.Interaction, role: discord.Role, message: str):
+    await interaction.response.defer(ephemeral=True)
+    count = 0
+    for member in role.members:
+        try:
+            await member.send(message)
+            count += 1
+            await asyncio.sleep(1)  # avoid rate limit
+        except Exception:
+            pass
+    await interaction.followup.send(f"DM sent to {count} users", ephemeral=True)
+
+bot.run(TOKEN)
 
 export default botConfig;
